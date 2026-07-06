@@ -3481,6 +3481,39 @@ impl<'nvml> Device<'nvml> {
     }
 
     /**
+    Gets the GPU fabric registration info for this [`Device`].
+
+    On multi-node NVLink systems (e.g. GB200 NVL) this reports the NVLink
+    fabric (cluster) UUID, the fabric partition (clique) id, and the state of
+    the device's registration with the fabric. Devices that are not part of a
+    multi-node NVLink fabric report an all-zero cluster UUID.
+
+    # Errors
+
+    * `Uninitialized`, if the library has not been successfully initialized
+    * `InvalidArg`, if the device is invalid
+    * `NotSupported`, if this `Device` doesn't support this feature
+    * `Unknown`, on any unexpected error
+    */
+    #[doc(alias = "nvmlDeviceGetGpuFabricInfo")]
+    pub fn gpu_fabric_info(&self) -> Result<GpuFabricInfo, NvmlError> {
+        let sym = nvml_sym(self.nvml.lib.nvmlDeviceGetGpuFabricInfo.as_ref())?;
+
+        let info = unsafe {
+            let mut info: nvmlGpuFabricInfo_t = mem::zeroed();
+            nvml_try(sym(self.device, &mut info))?;
+            info
+        };
+
+        Ok(GpuFabricInfo {
+            cluster_uuid: info.clusterUuid.map(|byte| byte as u8),
+            status: info.status,
+            partition_id: info.partitionId,
+            state: info.state,
+        })
+    }
+
+    /**
     Gets the power source of this [`Device`].
 
     # Errors

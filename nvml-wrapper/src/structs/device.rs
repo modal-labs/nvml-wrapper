@@ -101,3 +101,30 @@ pub struct RetiredPage {
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 pub struct FieldId(pub u32);
+
+/// Returned from `Device.gpu_fabric_info()`
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+pub struct GpuFabricInfo {
+    /// UUID of the NVLink fabric (cluster) the device is registered with.
+    ///
+    /// All zeroes when the device is not part of a multi-node NVLink fabric.
+    pub cluster_uuid: [u8; 16],
+    /// Error status of the fabric registration process (an `nvmlReturn_t`).
+    pub status: u32,
+    /// Fabric partition (clique) within the cluster that the device belongs to.
+    pub partition_id: u32,
+    /// State of the fabric registration process (`NVML_GPU_FABRIC_STATE_*`).
+    pub state: u8,
+}
+
+impl GpuFabricInfo {
+    /// Whether the device completed registration with a multi-node NVLink
+    /// fabric: registration finished and a real (non-zero) cluster UUID was
+    /// assigned. Single-node systems report `NVML_GPU_FABRIC_STATE_COMPLETED`
+    /// with an all-zero UUID.
+    pub fn is_fabric_attached(&self) -> bool {
+        u32::from(self.state) == crate::ffi::bindings::NVML_GPU_FABRIC_STATE_COMPLETED
+            && self.cluster_uuid.iter().any(|byte| *byte != 0)
+    }
+}
